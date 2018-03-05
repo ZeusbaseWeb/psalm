@@ -391,7 +391,7 @@ class ClassChecker extends ClassLikeChecker
                     $global_context
                 );
 
-                if ($stmt->name === '__construct') {
+                if ($stmt->name->name === '__construct') {
                     $constructor_checker = $method_checker;
                 }
             } elseif ($stmt instanceof PhpParser\Node\Stmt\TraitUse) {
@@ -449,7 +449,7 @@ class ClassChecker extends ClassLikeChecker
                                     $global_context
                                 );
 
-                                if ($trait_stmt->name === '__construct') {
+                                if ($trait_stmt->name->name === '__construct') {
                                     $constructor_checker = $trait_method_checker;
                                 }
                             }
@@ -554,20 +554,22 @@ class ClassChecker extends ClassLikeChecker
                         );
 
                         $fake_constructor_stmts = [
-                            new PhpParser\Node\Expr\StaticCall(
-                                new PhpParser\Node\Name(['parent']),
-                                '__construct',
-                                $fake_constructor_stmt_args,
-                                [
-                                    'line' => $this->class->extends->getLine(),
-                                    'startFilePos' => $this->class->extends->getAttribute('startFilePos'),
-                                    'endFilePos' => $this->class->extends->getAttribute('endFilePos'),
-                                ]
+                            new PhpParser\Node\Stmt\Expression(
+                                new PhpParser\Node\Expr\StaticCall(
+                                    new PhpParser\Node\Name(['parent']),
+                                    new PhpParser\Node\Identifier('__construct'),
+                                    $fake_constructor_stmt_args,
+                                    [
+                                        'line' => $this->class->extends->getLine(),
+                                        'startFilePos' => $this->class->extends->getAttribute('startFilePos'),
+                                        'endFilePos' => $this->class->extends->getAttribute('endFilePos'),
+                                    ]
+                                )
                             ),
                         ];
 
                         $fake_stmt = new PhpParser\Node\Stmt\ClassMethod(
-                            '__construct',
+                            new PhpParser\Node\Identifier('__construct'),
                             [
                                 'type' => PhpParser\Node\Stmt\Class_::MODIFIER_PUBLIC,
                                 'params' => $fake_constructor_params,
@@ -700,7 +702,7 @@ class ClassChecker extends ClassLikeChecker
 
         if (!$comment || !$comment->getText()) {
             $fq_class_name = $source->getFQCLN();
-            $property_name = $stmt->props[0]->name;
+            $property_name = $stmt->props[0]->name->name;
 
             $codebase = $project_checker->codebase;
 
@@ -809,7 +811,7 @@ class ClassChecker extends ClassLikeChecker
             $global_context ? clone $global_context : null
         );
 
-        if ($stmt->name !== '__construct'
+        if ($stmt->name->name !== '__construct'
             && $config->reportIssueInFile('InvalidReturnType', $source->getFilePath())
         ) {
             $return_type_location = null;
@@ -829,8 +831,10 @@ class ClassChecker extends ClassLikeChecker
 
                 $return_type = $codebase->methods->getMethodReturnType($analyzed_method_id, $self_class);
 
-                if (!$return_type && isset($class_storage->interface_method_ids[strtolower($stmt->name)])) {
-                    foreach ($class_storage->interface_method_ids[strtolower($stmt->name)] as $interface_method_id) {
+                if (!$return_type && isset($class_storage->interface_method_ids[strtolower($stmt->name->name)])) {
+                    $interface_method_ids = $class_storage->interface_method_ids[strtolower($stmt->name->name)];
+
+                    foreach ($interface_method_ids as $interface_method_id) {
                         list($interface_class) = explode('::', $interface_method_id);
 
                         $interface_return_type = $codebase->methods->getMethodReturnType(

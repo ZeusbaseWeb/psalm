@@ -381,11 +381,11 @@ class AssignmentChecker
                 $assign_value_type
             );
         } elseif ($assign_var instanceof PhpParser\Node\Expr\PropertyFetch) {
-            if (is_string($assign_var->name)) {
+            if ($assign_var->name instanceof PhpParser\Node\Identifier) {
                 PropertyAssignmentChecker::analyzeInstance(
                     $statements_checker,
                     $assign_var,
-                    $assign_var->name,
+                    $assign_var->name->name,
                     $assign_value,
                     $assign_value_type,
                     $context
@@ -404,8 +404,7 @@ class AssignmentChecker
                 $context->vars_possibly_in_scope[$var_id] = true;
             }
         } elseif ($assign_var instanceof PhpParser\Node\Expr\StaticPropertyFetch &&
-            $assign_var->class instanceof PhpParser\Node\Name &&
-            is_string($assign_var->name)
+            $assign_var->class instanceof PhpParser\Node\Name
         ) {
             if (ExpressionChecker::analyze($statements_checker, $assign_var, $context) === false) {
                 return false;
